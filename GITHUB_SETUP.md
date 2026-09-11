@@ -27,7 +27,7 @@ Do **not** commit client `.redviz.zip` files or other project data to this repos
 Simplest web-browser method:
 1. Open the new repository.
 2. Choose **Add file → Upload files**.
-3. Extract the v6.1 ZIP locally first.
+3. Extract the v6.2 ZIP locally first.
 4. Drag the *contents* of the extracted folder into GitHub so `index.html` is at repository root.
 5. Commit to `main`.
 

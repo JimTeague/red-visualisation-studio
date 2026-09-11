@@ -64,6 +64,7 @@
     displayStyle: "engineering",
     lighting: "overcast",
     condition: "engineering",
+    renderPriority: "realistic",
     imageryVisible: false,
     imageryBrightness: 1.0,
     imagerySaturation: 1.0,
@@ -958,7 +959,7 @@
       mesh.opacity = 1.0;
     }
     mesh.useTexture = Boolean(
-      mesh.role === "existing_imagery_full" &&
+      (mesh.role === "existing_imagery_full" || mesh.role === "design") &&
       state.scene && state.scene.imagery && state.scene.imagery.texture
     );
     mesh.texture = fallbackTexture;
@@ -1407,7 +1408,12 @@
     }
     bindMeshAttributes(mesh);
     gl.uniform1f(meshLocations.opacity, opacity);
-    gl.uniform1f(meshLocations.useTexture, mesh.texCoordBuffer && mesh.texture ? 1.0 : 0.0);
+    let textureBlend = 0.0;
+    if (mesh.texCoordBuffer && mesh.texture) {
+      if (mesh.role === "existing_imagery_full") { textureBlend = state.imageryVisible ? 1.0 : 0.0; }
+      else if (mesh.role === "design" && state.imageryVisible && state.colorMode === "elements") { textureBlend = state.condition === "engineering" ? 0.82 : 1.0; }
+    }
+    gl.uniform1f(meshLocations.useTexture, textureBlend);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, mesh.texture || fallbackTexture);
     gl.uniform1i(meshLocations.texture, 0);
@@ -1496,6 +1502,30 @@
     gl.disable(gl.BLEND);
   }
 
+  function priorityMesh(mesh) {
+    if (state.renderPriority === "design") { return mesh.role === "design"; }
+    if (state.renderPriority === "structures") { return mesh.role === "pile" || mesh.layerGroup === "rock" || mesh.layerGroup === "large_wood"; }
+    return false;
+  }
+
+  function drawPriorityOverlay() {
+    if (state.renderPriority === "realistic") { return; }
+    gl.useProgram(meshProgram);
+    gl.uniformMatrix4fv(meshLocations.viewProjection, false, state.viewProjectionMatrix);
+    const light = lightingValues();
+    gl.uniform3fv(meshLocations.lightA, light.primary);
+    gl.uniform3fv(meshLocations.lightB, light.fill);
+    gl.uniform1f(meshLocations.ambient, light.ambient);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    gl.depthFunc(gl.ALWAYS);
+    state.meshes.forEach(function (mesh) { if (priorityMesh(mesh)) { drawMesh(mesh, meshOpacity(mesh) < 0.995); } });
+    gl.depthFunc(gl.LEQUAL);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+  }
+
   function render() {
     state.renderPending = false;
     if (state.contextLost) {
@@ -1520,8 +1550,9 @@
     state.meshes.forEach(function (mesh) { drawMesh(mesh, true); });
     gl.depthMask(true);
     gl.disable(gl.BLEND);
+    drawPriorityOverlay();
     drawWireframes();
-    drawLines();
+    if (state.renderPriority === "structures") { gl.depthFunc(gl.ALWAYS); drawLines(); gl.depthFunc(gl.LEQUAL); } else { drawLines(); }
   }
 
   function requestRender() {
@@ -1843,6 +1874,13 @@
     state.meshes.forEach(refreshMeshColours);
     updateEnvironment();
     updateLegend();
+    requestRender();
+    return true;
+  }
+
+  function setRenderPriority(priority) {
+    const value = String(priority || "realistic");
+    state.renderPriority = ["realistic", "design", "structures"].indexOf(value) >= 0 ? value : "realistic";
     requestRender();
     return true;
   }
@@ -2235,6 +2273,7 @@
     setDisplayStyle: setDisplayStyle,
     setLighting: setLighting,
     setCondition: setCondition,
+    setRenderPriority: setRenderPriority,
     setImageryVisible: setImageryVisible,
     setImageryAdjustments: setImageryAdjustments,
     setMaterialOptions: setMaterialOptions,
@@ -2263,6 +2302,7 @@
         displayStyle: state.displayStyle,
         lighting: state.lighting,
         condition: state.condition,
+        renderPriority: state.renderPriority,
         imageryVisible: state.imageryVisible,
         imageryBrightness: state.imageryBrightness,
         imagerySaturation: state.imagerySaturation,

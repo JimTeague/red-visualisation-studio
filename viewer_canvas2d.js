@@ -1828,6 +1828,7 @@
       setDisplayStyle: setDisplayStyle,
       setLighting: setLighting,
       setCondition: setCondition,
+      setRenderPriority: function () { requestRender(); return true; },
       setImageryVisible: setImageryVisible,
       setCameraPreset: setCameraPreset,
       getCamera: getCamera,

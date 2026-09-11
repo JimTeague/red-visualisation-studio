@@ -12,7 +12,51 @@ async function unzip(file){const buf=await file.arrayBuffer(),view=new DataView(
 function jsonEntry(entries,name){if(!entries[name])throw new Error("Package is missing "+name);return JSON.parse(utf8(entries[name]));}
 function makeTextureUrl(entries,scene){const meta=scene&&scene.imagery&&scene.imagery.texture;if(!meta||!meta.path||!entries[meta.path])return false;const blob=new Blob([entries[meta.path]],{type:meta.format||"image/jpeg"});const url=URL.createObjectURL(blob);state.urls.push(url);scene.imagery.texture.path=url;return true;}
 function waterColour(){const style=$("waterStyle").value;return style==="flood"?"#6f7152":style==="river"?"#3d8290":"#4ca6c0";}
-function addWater(scene){scene.meshes=(scene.meshes||[]).filter(m=>m.id!=="studio-water");if(!state.waterVisible)return;const b=scene.bounds||{},min=b.minimum||[-10,-10,0],max=b.maximum||[10,10,1],origin=scene.origin||{z:0};const ahd=Number($("waterLevel").value)||0,z=ahd-(Number(origin.z)||0),op=(Number($("waterOpacity").value)||38)/100,inset=(Number($("waterInset").value)||0)/100,dx=(max[0]-min[0])*inset,dy=(max[1]-min[1])*inset,x0=min[0]+dx,x1=max[0]-dx,y0=min[1]+dy,y1=max[1]-dy;scene.meshes.push({id:"studio-water",label:"Water surface",role:"water",positions:[x0,y0,z,x1,y0,z,x1,y1,z,x0,y1,z],indices:[0,1,2,0,2,3],base_color:waterColour(),opacity:op,visible:true,metadata:{presentation_only:true,water_level_ahd:ahd}});}
+function clipTriangleBelowWater(a,b,c,z){
+  let poly=[a,b,c];
+  const out=[];
+  for(let i=0;i<poly.length;i++){
+    const curr=poly[i],next=poly[(i+1)%poly.length];
+    const currIn=curr[2]<=z,nextIn=next[2]<=z;
+    if(currIn)out.push(curr);
+    if(currIn!==nextIn){
+      const dz=next[2]-curr[2];
+      const t=Math.abs(dz)<1e-12?0:(z-curr[2])/dz;
+      out.push([curr[0]+(next[0]-curr[0])*t,curr[1]+(next[1]-curr[1])*t,z]);
+    }
+  }
+  return out;
+}
+function terrainWaterMesh(scene,z){
+  const meshes=scene.meshes||[];
+  const source=meshes.find(m=>m.role==="existing_imagery_full"&&Array.isArray(m.positions)&&Array.isArray(m.indices))||
+    meshes.find(m=>(m.role==="existing_context"||m.role==="existing")&&Array.isArray(m.positions)&&Array.isArray(m.indices))||
+    meshes.find(m=>m.role==="design"&&Array.isArray(m.positions)&&Array.isArray(m.indices));
+  const positions=[],indices=[];let kept=0;
+  if(!source)return {positions,indices,kept};
+  const pts=source.positions,idx=source.indices,maxTriangles=220000;
+  for(let k=0;k+2<idx.length&&kept<maxTriangles;k+=3){
+    const ia=Number(idx[k])*3,ib=Number(idx[k+1])*3,ic=Number(idx[k+2])*3;
+    if(ic+2>=pts.length)continue;
+    const a=[Number(pts[ia])||0,Number(pts[ia+1])||0,Number(pts[ia+2])||0];
+    const b=[Number(pts[ib])||0,Number(pts[ib+1])||0,Number(pts[ib+2])||0];
+    const c=[Number(pts[ic])||0,Number(pts[ic+1])||0,Number(pts[ic+2])||0];
+    const poly=clipTriangleBelowWater(a,b,c,z);
+    if(poly.length<3)continue;
+    const base=positions.length/3;
+    for(const q of poly)positions.push(q[0],q[1],z);
+    for(let j=1;j+1<poly.length;j++){indices.push(base,base+j,base+j+1);kept++;}
+  }
+  return {positions,indices,kept};
+}
+function addWater(scene){
+  scene.meshes=(scene.meshes||[]).filter(m=>m.id!=="studio-water");if(!state.waterVisible)return;
+  const b=scene.bounds||{},min=b.minimum||[-10,-10,0],max=b.maximum||[10,10,1],origin=scene.origin||{z:0};
+  const ahd=Number($("waterLevel").value)||0,z=ahd-(Number(origin.z)||0),op=(Number($("waterOpacity").value)||38)/100;
+  if($("waterExtent").value==="terrain"){const clipped=terrainWaterMesh(scene,z);if(clipped.indices.length){scene.meshes.push({id:"studio-water",label:"Terrain-clipped water surface",role:"water",positions:clipped.positions,indices:clipped.indices,base_color:waterColour(),opacity:op,visible:true,metadata:{presentation_only:true,water_level_ahd:ahd,extent:"terrain",triangles:clipped.kept}});return;}}
+  const inset=(Number($("waterInset").value)||0)/100,dx=(max[0]-min[0])*inset,dy=(max[1]-min[1])*inset,x0=min[0]+dx,x1=max[0]-dx,y0=min[1]+dy,y1=max[1]-dy;
+  scene.meshes.push({id:"studio-water",label:"Water surface",role:"water",positions:[x0,y0,z,x1,y0,z,x1,y1,z,x0,y1,z],indices:[0,1,2,0,2,3],base_color:waterColour(),opacity:op,visible:true,metadata:{presentation_only:true,water_level_ahd:ahd,extent:"plane"}});
+}
 
 function frac(v){return v-Math.floor(v);}
 function seeded01(x,y,z,salt){return frac(Math.sin(x*12.9898+y*78.233+z*37.719+salt*19.19)*43758.5453);}
@@ -35,6 +79,20 @@ function addStemGeometry(positions,indices,cx,cy,cz,radius,height){
     }
   }
   for(let i=0;i<sides;i++){const j=(i+1)%sides;indices.push(first+i,first+j,first+sides+j,first+i,first+sides+j,first+sides+i);}
+}
+
+function addOctahedron(positions,indices,cx,cy,cz,rx,ry,rz){
+  const b=positions.length/3;
+  positions.push(cx-rx,cy,cz,cx+rx,cy,cz,cx,cy-ry,cz,cx,cy+ry,cz,cx,cy,cz+rz,cx,cy,cz-rz*.45);
+  indices.push(b,b+2,b+4,b+2,b+1,b+4,b+1,b+3,b+4,b+3,b,b+4,b+2,b,b+5,b+1,b+2,b+5,b+3,b+1,b+5,b,b+3,b+5);
+}
+function addRockClasts(scene){
+  scene.meshes=(scene.meshes||[]).filter(m=>m.id!=="studio-rock-clasts");
+  if(!$("rockClasts").checked)return;
+  const rocks=(scene.meshes||[]).filter(m=>(m.layer_group==="rock"||/rock|scour/i.test(String(m.role||"")+" "+String(m.id||"")))&&Array.isArray(m.positions)&&Array.isArray(m.indices));
+  const positions=[],indices=[];let made=0;const maxClasts=700;
+  for(const rock of rocks){const pts=rock.positions,idx=rock.indices;const step=Math.max(3,Math.floor(idx.length/Math.max(60,Math.min(240,idx.length/9))));for(let k=0;k+2<idx.length&&made<maxClasts;k+=Math.max(3,step-step%3)){const ia=idx[k]*3,ib=idx[k+1]*3,ic=idx[k+2]*3;if(ic+2>=pts.length)continue;const cx=(pts[ia]+pts[ib]+pts[ic])/3,cy=(pts[ia+1]+pts[ib+1]+pts[ic+1])/3,cz=(pts[ia+2]+pts[ib+2]+pts[ic+2])/3;const e=Math.hypot((pts[ib]-pts[ia])||0,(pts[ib+1]-pts[ia+1])||0,(pts[ib+2]-pts[ia+2])||0);const base=Math.max(.12,Math.min(.75,e*.28));const n=seeded01(cx,cy,cz,made+11);addOctahedron(positions,indices,cx,cy,cz+base*.18,base*(.8+n*.65),base*(.65+seeded01(cx,cy,cz,made+21)*.55),base*(.45+seeded01(cx,cy,cz,made+31)*.55));made++;}}
+  if(indices.length)scene.meshes.push({id:"studio-rock-clasts",label:"Illustrative rock clasts",role:"rock_presentation",layer_group:"rock",positions,indices,base_color:"#77736a",opacity:1,visible:true,metadata:{presentation_only:true,illustrative:true,count:made}});
 }
 
 function addRootwadDetail(scene){
@@ -67,7 +125,9 @@ function addVegetation(scene){
   scene.meshes=(scene.meshes||[]).filter(m=>m.id!=="studio-vegetation");
   const condition=$('condition').value;
   if(!$('vegetationToggle').checked || (condition!=="early"&&condition!=="established"))return;
-  const design=(scene.meshes||[]).find(m=>m.role==="design"&&Array.isArray(m.positions));
+  const reveg=(scene.meshes||[]).find(m=>(m.role==="revegetation"||m.role==="revegetation_area"||m.layer_group==="revegetation"||/reveg/i.test(String(m.id||"")+" "+String(m.label||"")))&&Array.isArray(m.positions));
+  const design=reveg||(scene.meshes||[]).find(m=>m.role==="design"&&Array.isArray(m.positions));
+  const src=$("revegetationSource");if(src)src.textContent=reveg?"Vegetation source: RED revegetation footprint":"Vegetation source: design-surface fallback";
   if(!design||design.positions.length<3)return;
   const density=Math.max(0,Math.min(1,Number($('vegetationDensity').value)/100));
   if(density<=0)return;
@@ -101,8 +161,8 @@ function addVegetation(scene){
   }
   if(indices.length){scene.meshes.push({id:"studio-vegetation",label:early?"Early establishment vegetation":"Established vegetation",role:"vegetation",layer_group:"vegetation",positions,indices,base_color:early?"#66884c":"#416f3a",opacity:1,visible:true,metadata:{presentation_only:true,illustrative:true,count:made,condition,style}});}
 }
-function loadCurrentScene(preserveCamera){if(!state.baseScene)return;const cam=preserveCamera&&window.RED3D?RED3D.getCamera():null;const scene=clone(state.baseScene);if(state.baseScene.imagery&&state.baseScene.imagery.texture&&state.baseScene.imagery.texture.path&&state.baseScene.imagery.texture.path.startsWith("blob:")){scene.imagery.texture.path=state.baseScene.imagery.texture.path;}addWater(scene);addRootwadDetail(scene);addVegetation(scene);state.scene=scene;RED3D.loadScene(scene);applyControls();if(cam)RED3D.setCamera(cam);}
-function applyControls(){if(!window.RED3D)return;RED3D.setCondition($("condition").value);RED3D.setColorMode($("colorMode").value);RED3D.setLighting($("lighting").value);RED3D.setVisibility("design",$("layerDesign").checked);RED3D.setVisibility("existing",$("layerExisting").checked);RED3D.setVisibility("piles",$("layerPiles").checked);RED3D.setVisibility("rock",$("layerRock").checked);RED3D.setVisibility("large_wood",$("layerWood").checked);RED3D.setVisibility("vegetation",$("vegetationToggle").checked);RED3D.setVisibility("breaklines",$("layerBreaklines").checked);RED3D.setVisibility("grid",$("layerGrid").checked);RED3D.setImageryVisible($("layerImagery").checked);RED3D.setWireframe($("layerWire").checked);RED3D.setOpacity("design",Number($("designOpacity").value)/100);RED3D.setOpacity("existing",Number($("existingOpacity").value)/100);if(RED3D.setImageryAdjustments)RED3D.setImageryAdjustments(Number($("imageryBrightness").value)/100,Number($("imagerySaturation").value)/100,Number($("imageryContrast").value)/100);if(RED3D.setMaterialOptions)RED3D.setMaterialOptions($("rockMaterial").value,$("timberMaterial").value,Number($("materialVariation").value)/100);}
+function loadCurrentScene(preserveCamera){if(!state.baseScene)return;const cam=preserveCamera&&window.RED3D?RED3D.getCamera():null;const scene=clone(state.baseScene);if(state.baseScene.imagery&&state.baseScene.imagery.texture&&state.baseScene.imagery.texture.path&&state.baseScene.imagery.texture.path.startsWith("blob:")){scene.imagery.texture.path=state.baseScene.imagery.texture.path;}addWater(scene);addRootwadDetail(scene);addRockClasts(scene);addVegetation(scene);state.scene=scene;RED3D.loadScene(scene);applyControls();if(cam)RED3D.setCamera(cam);}
+function applyControls(){if(!window.RED3D)return;RED3D.setCondition($("condition").value);RED3D.setColorMode($("colorMode").value);RED3D.setLighting($("lighting").value);if(RED3D.setRenderPriority)RED3D.setRenderPriority($("renderPriority").value);RED3D.setVisibility("design",$("layerDesign").checked);RED3D.setVisibility("existing",$("layerExisting").checked);RED3D.setVisibility("piles",$("layerPiles").checked);RED3D.setVisibility("rock",$("layerRock").checked);RED3D.setVisibility("large_wood",$("layerWood").checked);RED3D.setVisibility("vegetation",$("vegetationToggle").checked);RED3D.setVisibility("breaklines",$("layerBreaklines").checked);RED3D.setVisibility("grid",$("layerGrid").checked);RED3D.setImageryVisible($("layerImagery").checked);RED3D.setWireframe($("layerWire").checked);RED3D.setOpacity("design",Number($("designOpacity").value)/100);RED3D.setOpacity("existing",Number($("existingOpacity").value)/100);if(RED3D.setImageryAdjustments)RED3D.setImageryAdjustments(Number($("imageryBrightness").value)/100,Number($("imagerySaturation").value)/100,Number($("imageryContrast").value)/100);if(RED3D.setMaterialOptions)RED3D.setMaterialOptions($("rockMaterial").value,$("timberMaterial").value,Number($("materialVariation").value)/100);}
 function populateViews(){const select=$("savedViews");select.innerHTML='<option value="">Select a view</option>';Object.keys(state.cameras||{}).forEach(name=>{const o=document.createElement("option");o.value=name;o.textContent=name;select.appendChild(o);});}
 async function openPackage(file){status("Opening package…");revoke();const entries=await unzip(file);const manifest=jsonEntry(entries,"manifest.json");if(!/^red-visualisation-package\/(1|2)$/.test(String(manifest.schema||"")))throw new Error("Unsupported RED package version.");const scene=jsonEntry(entries,"scene.json");const cameras=entries["camera_views.json"]?JSON.parse(utf8(entries["camera_views.json"])):{};const textured=makeTextureUrl(entries,scene);state.manifest=manifest;state.baseScene=scene;state.cameras=cameras||{};state.packageName=file.name;populateViews();loadCurrentScene(false);status(file.name+" · "+((scene.meshes||[]).length)+" meshes"+(textured?" · aerial texture loaded":" · vertex-colour imagery fallback"));}
 function downloadDataUrl(dataUrl,name){const a=document.createElement("a");a.href=dataUrl;a.download=name;document.body.appendChild(a);a.click();a.remove();}
@@ -110,20 +170,20 @@ function updatePhoto(){const active=Boolean(state.photoUrl&&$("photoToggle").che
 async function compositeExport(w,h){const sceneUrl=RED3D.exportImage?RED3D.exportImage(w,h):$("gl-canvas").toDataURL("image/png");if(!(state.photoUrl&&$("photoToggle").checked))return sceneUrl;const out=document.createElement("canvas");out.width=w;out.height=h;const ctx=out.getContext("2d");const photo=$("photo-overlay"),sceneImage=new Image();await new Promise((res,rej)=>{sceneImage.onload=res;sceneImage.onerror=rej;sceneImage.src=sceneUrl;});const scale=Number($("photoScale").value)/100;const photoRatio=photo.naturalWidth/photo.naturalHeight,outRatio=w/h;let dw,dh;if(photoRatio>outRatio){dh=h;dw=dh*photoRatio;}else{dw=w;dh=dw/photoRatio;}dw*=scale;dh*=scale;const sx=Number($("photoShiftX").value)*(w/Math.max($("viewport").clientWidth,1));const sy=Number($("photoShiftY").value)*(h/Math.max($("viewport").clientHeight,1));const rotation=Number($("photoRotate").value)*Math.PI/180;function drawPhoto(){ctx.save();ctx.globalAlpha=Number($("photoOpacity").value)/100;ctx.translate(w/2+sx,h/2+sy);ctx.rotate(rotation);ctx.drawImage(photo,-dw/2,-dh/2,dw,dh);ctx.restore();}if(state.photoFront){ctx.drawImage(sceneImage,0,0,w,h);drawPhoto();}else{drawPhoto();ctx.drawImage(sceneImage,0,0,w,h);}return out.toDataURL("image/png");}
 $("openPackage").onclick=()=>$("fileInput").click();
 $("fileInput").onchange=async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;try{await openPackage(file);}catch(err){console.error(err);status("Could not open package: "+err.message);alert("Could not open package: "+err.message);}finally{e.target.value="";}};
-["colorMode","lighting","layerDesign","layerExisting","layerPiles","layerRock","layerWood","layerBreaklines","layerGrid","layerImagery","layerWire","designOpacity","existingOpacity","imageryBrightness","imagerySaturation","imageryContrast","rockMaterial","timberMaterial","materialVariation"].forEach(id=>$(id).addEventListener("input",applyControls));$("condition").addEventListener("input",()=>loadCurrentScene(true));["vegetationToggle","vegetationStyle","vegetationDensity","vegetationHeight"].forEach(id=>$(id).addEventListener("input",()=>loadCurrentScene(true)));$("rootwadDetail").addEventListener("input",()=>loadCurrentScene(true));
+["colorMode","lighting","renderPriority","layerDesign","layerExisting","layerPiles","layerRock","layerWood","layerBreaklines","layerGrid","layerImagery","layerWire","designOpacity","existingOpacity","imageryBrightness","imagerySaturation","imageryContrast","rockMaterial","timberMaterial","materialVariation"].forEach(id=>$(id).addEventListener("input",applyControls));$("condition").addEventListener("input",()=>loadCurrentScene(true));["vegetationToggle","vegetationStyle","vegetationDensity","vegetationHeight"].forEach(id=>$(id).addEventListener("input",()=>loadCurrentScene(true)));$("rootwadDetail").addEventListener("input",()=>loadCurrentScene(true));$("rockClasts").addEventListener("input",()=>loadCurrentScene(true));
 document.querySelectorAll("[data-camera]").forEach(btn=>btn.onclick=()=>RED3D.setCameraPreset(btn.dataset.camera));
 $("savedViews").onchange=e=>{const c=state.cameras[e.target.value];if(c)RED3D.setCamera(c);};
 $("saveView").onclick=()=>{if(!state.baseScene)return;const name=prompt("Viewpoint name:");if(!name)return;state.cameras[name]=RED3D.getCamera();populateViews();$("savedViews").value=name;};
 $("downloadViews").onclick=()=>{const payload={views:state.cameras,photo_matches:state.photoMatches};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob);state.urls.push(url);const a=document.createElement("a");a.href=url;a.download="RED_viewpoints.json";a.click();};
 $("waterToggle").onchange=e=>{state.waterVisible=e.target.checked;loadCurrentScene(true);};
-["waterLevel","waterStyle","waterInset"].forEach(id=>$(id).onchange=()=>{if(state.waterVisible)loadCurrentScene(true);});
+["waterLevel","waterStyle","waterExtent","waterInset"].forEach(id=>$(id).onchange=()=>{if(state.waterVisible)loadCurrentScene(true);});
 $("waterOpacity").oninput=()=>{if(state.waterVisible)loadCurrentScene(true);};
 $("openPhoto").onclick=()=>$("photoInput").click();
 $("photoInput").onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(state.photoUrl)URL.revokeObjectURL(state.photoUrl);state.photoUrl=URL.createObjectURL(file);state.urls.push(state.photoUrl);$("photo-overlay").src=state.photoUrl;$("photoToggle").checked=true;$("photoStatus").textContent=file.name+" · alignment reference only";updatePhoto();e.target.value="";};
 ["photoToggle","photoOpacity","photoScale","photoRotate","photoShiftX","photoShiftY","photoCrosshair"].forEach(id=>$(id).addEventListener("input",updatePhoto));
 $("savePhotoMatch").onclick=()=>{if(!state.photoUrl||!state.baseScene)return;const name=prompt("Photo match name:","Photo match 1");if(!name)return;state.photoMatches[name]={camera:RED3D.getCamera(),photo:{opacity:Number($("photoOpacity").value)/100,scale:Number($("photoScale").value)/100,rotation_deg:Number($("photoRotate").value),shift_x:Number($("photoShiftX").value),shift_y:Number($("photoShiftY").value),photo_front:state.photoFront}};state.cameras[name]=state.photoMatches[name].camera;populateViews();$("savedViews").value=name;$("photoStatus").textContent="Saved "+name+". Reference photo itself remains local to this browser.";};
 $("exportPng").onclick=async()=>{if(!state.scene)return;const [w,h]=$("exportSize").value.split("x").map(Number);try{const data=await compositeExport(w,h);const base=(state.packageName||"RED_visualisation").replace(/\.redviz\.zip$|\.zip$/i,"");downloadDataUrl(data,base+"_"+w+"x"+h+".png");}catch(err){console.error(err);alert("Image export failed: "+err.message);}};
-$("resetPhoto").onclick=()=>{$("photoOpacity").value=45;$("photoScale").value=100;$("photoRotate").value=0;$("photoShiftX").value=0;$("photoShiftY").value=0;state.photoFront=false;updatePhoto();};$("swapPhotoSide").onclick=()=>{state.photoFront=!state.photoFront;$("swapPhotoSide").classList.toggle("active",state.photoFront);updatePhoto();};$("presentationPreset").onclick=()=>{$("condition").value="construction";$("lighting").value="midday";$("colorMode").value="elements";$("rockMaterial").value="natural";$("timberMaterial").value="weathered";$("materialVariation").value=55;$("imageryBrightness").value=102;$("imagerySaturation").value=108;$("imageryContrast").value=108;$("layerWire").checked=false;applyControls();};window.addEventListener("beforeunload",revoke);
+$("resetPhoto").onclick=()=>{$("photoOpacity").value=45;$("photoScale").value=100;$("photoRotate").value=0;$("photoShiftX").value=0;$("photoShiftY").value=0;state.photoFront=false;updatePhoto();};$("swapPhotoSide").onclick=()=>{state.photoFront=!state.photoFront;$("swapPhotoSide").classList.toggle("active",state.photoFront);updatePhoto();};$("presentationPreset").onclick=()=>{$("condition").value="construction";$("lighting").value="midday";$("colorMode").value="elements";$("rockMaterial").value="natural";$("timberMaterial").value="weathered";$("materialVariation").value=55;$("renderPriority").value="realistic";$("imageryBrightness").value=102;$("imagerySaturation").value=108;$("imageryContrast").value=108;$("layerWire").checked=false;applyControls();};window.addEventListener("beforeunload",revoke);
 })();
 
 

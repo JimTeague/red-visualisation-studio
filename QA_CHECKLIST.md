@@ -32,3 +32,14 @@
 - [ ] No engineering geometry is displaced by presentation effects
 - [ ] Files remain local to browser during normal use
 - [ ] Viewer remains usable in a normal external browser session
+
+## v6.2 refinement acceptance
+- [ ] Engineering / Design elements view shows sharp aerial texture over proposed terrain when Aerial texture is enabled
+- [ ] Review priority = Realistic depth preserves normal occlusion
+- [ ] Review priority = Proposed terrain priority exposes cut design without changing geometry
+- [ ] Review priority = Structures priority exposes buried rock / Large Wood / piles for review
+- [ ] Terrain-clipped water does not extend as a full rectangle across high banks
+- [ ] Simple plane water mode remains available
+- [ ] Illustrative rock clasts can be toggled independently
+- [ ] UI reports design-surface fallback when no RED revegetation footprint exists
+- [ ] Future revegetation-area mesh is preferred when present

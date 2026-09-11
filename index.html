@@ -25,6 +25,8 @@
       <label>Condition<select id="condition"><option value="engineering">Engineering review</option><option value="existing">Existing</option><option value="construction">Post-construction</option><option value="early">Early establishment</option><option value="established">Established</option></select></label>
       <label>Surface colouring<select id="colorMode"><option value="elements">Design elements</option><option value="elevation">Elevation</option><option value="cut_fill">Cut / fill</option><option value="slope">Slope</option></select></label>
       <label>Light<select id="lighting"><option value="overcast">Overcast</option><option value="morning">Morning</option><option value="midday">Midday</option><option value="evening">Evening</option></select></label>
+      <label>Review priority<select id="renderPriority"><option value="realistic">Realistic depth</option><option value="design">Proposed terrain priority</option><option value="structures">Structures priority</option></select></label>
+      <p class="mini-note">Priority modes are review aids. They can draw selected elements through overlying surfaces without changing RED geometry.</p>
     </section>
     <section>
       <h3>LAYERS</h3>
@@ -49,12 +51,14 @@
       <label>Timber character<select id="timberMaterial"><option value="natural">Natural timber</option><option value="fresh">Fresh timber</option><option value="weathered">Weathered timber</option></select></label>
       <label>Material variation<input id="materialVariation" type="range" min="0" max="100" value="45"></label>
       <label class="check"><input id="rootwadDetail" type="checkbox" checked> Enhanced rootwad detail</label>
+      <label class="check"><input id="rockClasts" type="checkbox" checked> Illustrative rock clasts</label>
       <button id="presentationPreset">Apply presentation preset</button>
     </section>
 
     <section>
       <h3>VEGETATION</h3>
       <label class="check"><input id="vegetationToggle" type="checkbox" checked> Show establishment vegetation</label>
+      <div id="revegetationSource" class="status">Vegetation source: design-surface fallback</div>
       <label>Vegetation character<select id="vegetationStyle"><option value="riparian">Riparian mixed</option><option value="grass">Grass / sedge</option><option value="shrub">Shrub dominant</option></select></label>
       <label>Density<input id="vegetationDensity" type="range" min="0" max="100" value="45"></label>
       <label>Height<input id="vegetationHeight" type="range" min="20" max="180" value="100"></label>
@@ -66,7 +70,8 @@
       <label>Water level (m AHD)<input id="waterLevel" type="number" step="0.05" value="0"></label>
       <label>Water opacity<input id="waterOpacity" type="range" min="5" max="80" value="38"></label>
       <label>Water appearance<select id="waterStyle"><option value="clear">Clear</option><option value="river">River</option><option value="flood">Flood / turbid</option></select></label>
-      <label>Water extent inset<input id="waterInset" type="range" min="0" max="45" value="8"></label>
+      <label>Water extent<select id="waterExtent"><option value="terrain" selected>Clip to terrain below water level</option><option value="plane">Simple plane</option></select></label>
+      <label>Plane extent inset<input id="waterInset" type="range" min="0" max="45" value="8"></label>
     </section>
     <section>
       <h3>PHOTO ALIGNMENT</h3>
@@ -95,7 +100,7 @@
       <button id="exportPng">Export high-resolution PNG</button>
       <button id="downloadViews">Download viewpoints</button>
     </section>
-    <p class="footnote"><strong>RED Visualisation Studio v6.1</strong><br>Files stay in this browser. This hosted viewer is presentation-only and does not alter RED engineering geometry.</p>
+    <p class="footnote"><strong>RED Visualisation Studio v6.2</strong><br>Files stay in this browser. This hosted viewer is presentation-only and does not alter RED engineering geometry.</p>
   </aside>
   <main id="viewport" aria-label="RED 3D viewport">
     <div id="photo-stage" aria-hidden="true"><img id="photo-overlay" alt=""><div id="photo-crosshair"></div></div>

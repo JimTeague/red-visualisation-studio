@@ -1,12 +1,13 @@
 {
   "name": "RED Visualisation Studio",
-  "version": "6.1.0",
+  "version": "6.2.0",
   "release_channel": "github-pages",
-  "source_base": "v5 offline bundle",
+  "source_base": "v6.1 public GitHub release",
   "notes": [
-    "Client-facing landing screen and privacy messaging",
-    "Drag-and-drop RED package opening",
-    "GitHub Pages deployment and repository setup guide",
-    "External-sharing release packaging"
+    "Review-priority modes for realistic depth, proposed terrain priority and structures priority",
+    "High-resolution aerial texture now also drapes over proposed terrain in design-elements view",
+    "Terrain-clipped water extent replaces full-scene plane as the default",
+    "Presentation-only illustrative rock clasts",
+    "Viewer detects future RED revegetation-footprint meshes and uses them preferentially for establishment vegetation"
   ]
 }

@@ -1,4 +1,4 @@
-# RED Visualisation Studio v6.1 - public GitHub Pages release bundle
+# RED Visualisation Studio v6.2 - GitHub Pages refinement release
 
 Static browser viewer for River Earthworks Designer (RED) `.redviz.zip` visualisation packages.
 
@@ -27,7 +27,7 @@ Use this repository when you want to:
   - Aerial texture
   - Wireframe
 - Surface colour modes for design elements, elevation, cut/fill and slope
-- Water surface controls with level, opacity, appearance and extent inset
+- Water surface controls with level, opacity, appearance and terrain-clipped extent
 - Presentation-only material controls for rock and timber
 - Presentation-only vegetation for early establishment and established-condition visuals
 - Presentation-only enhanced rootwad detail
@@ -83,9 +83,15 @@ Enable GitHub Pages and choose **GitHub Actions** as the publishing source.
 
 See `DEPLOY_GITHUB_PAGES.md` for step-by-step instructions.
 
-## Release note
+## New in v6.2
 
-v6.1 adds the first client-facing landing experience, drag-and-drop package opening, clearer local-processing/privacy messaging, deployment documentation and a release structure intended for external sharing.
+- **Review priority** control with realistic depth, proposed-terrain priority and structures priority. The priority modes are explicit review aids that let cut surfaces, buried rock and other structures remain visible without changing RED geometry.
+- **High-resolution aerial texture on proposed terrain** in Design elements view, removing the mismatch where surrounding context was sharp but the design footprint fell back to coarse vertex imagery.
+- **Terrain-clipped water** is now the default. The viewer clips water to triangles below the entered water RL instead of drawing a rectangular plane across the whole scene. The simple plane remains available as a fallback.
+- **Illustrative rock clasts** add presentation-only low-poly rock texture over exported rock meshes.
+- **Revegetation-footprint hook**: if a future RED package exports a `revegetation` / `revegetation_area` mesh, establishment vegetation is generated from that footprint instead of the entire design surface.
+
+See `RED_EXPORT_CONTRACT_v6_2.md` for the proposed RED-side revegetation and rock metadata hooks.
 
 
 ## Recommended repository metadata
