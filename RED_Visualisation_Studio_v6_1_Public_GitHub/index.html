@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RED · Visualisation Studio</title>
+<link rel="stylesheet" href="viewer.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="red">RED</span><span>VISUALISATION STUDIO</span></div>
+  <div class="top-status"><span class="privacy-dot"></span><span>Local browser processing</span><span class="top-sep">•</span><span>Engineering geometry locked</span></div>
+</header>
+<div class="app-shell">
+  <aside class="sidebar">
+    <section>
+      <h3>PROJECT WORKSPACE</h3>
+      <button id="openPackage" class="primary">Open RED visualisation package</button>
+      <input id="fileInput" type="file" accept=".zip,.redviz.zip" hidden>
+      <div id="packageStatus" class="status">No package open.</div><p class="workspace-note">Choose a `.redviz.zip` package supplied with your project. The file is processed locally in this browser.</p>
+    </section>
+    <section>
+      <h3>SCENE CONTROLS</h3>
+      <label>Condition<select id="condition"><option value="engineering">Engineering review</option><option value="existing">Existing</option><option value="construction">Post-construction</option><option value="early">Early establishment</option><option value="established">Established</option></select></label>
+      <label>Surface colouring<select id="colorMode"><option value="elements">Design elements</option><option value="elevation">Elevation</option><option value="cut_fill">Cut / fill</option><option value="slope">Slope</option></select></label>
+      <label>Light<select id="lighting"><option value="overcast">Overcast</option><option value="morning">Morning</option><option value="midday">Midday</option><option value="evening">Evening</option></select></label>
+    </section>
+    <section>
+      <h3>LAYERS</h3>
+      <label class="check"><input id="layerDesign" type="checkbox" checked> Proposed terrain</label>
+      <label class="check"><input id="layerExisting" type="checkbox" checked> Existing terrain</label>
+      <label class="check"><input id="layerPiles" type="checkbox" checked> Pile fields</label>
+      <label class="check"><input id="layerRock" type="checkbox" checked> Rock</label>
+      <label class="check"><input id="layerWood" type="checkbox" checked> Large Wood</label>
+      <label class="check"><input id="layerBreaklines" type="checkbox"> Breaklines</label>
+      <label class="check"><input id="layerGrid" type="checkbox"> Reference grid</label>
+      <label class="check"><input id="layerImagery" type="checkbox" checked> Aerial texture</label>
+      <label class="check"><input id="layerWire" type="checkbox"> Triangle wireframe</label>
+      <label>Proposed opacity<input id="designOpacity" type="range" min="5" max="100" value="100"></label>
+      <label>Existing opacity<input id="existingOpacity" type="range" min="5" max="100" value="100"></label>
+      <label>Aerial brightness<input id="imageryBrightness" type="range" min="60" max="140" value="100"></label>
+      <label>Aerial saturation<input id="imagerySaturation" type="range" min="0" max="160" value="100"></label>
+      <label>Aerial contrast<input id="imageryContrast" type="range" min="60" max="160" value="105"></label>
+    </section>
+    <section>
+      <h3>MATERIALS</h3>
+      <label>Rock character<select id="rockMaterial"><option value="natural">Natural rock</option><option value="fresh">Fresh construction</option><option value="weathered">Weathered</option></select></label>
+      <label>Timber character<select id="timberMaterial"><option value="natural">Natural timber</option><option value="fresh">Fresh timber</option><option value="weathered">Weathered timber</option></select></label>
+      <label>Material variation<input id="materialVariation" type="range" min="0" max="100" value="45"></label>
+      <label class="check"><input id="rootwadDetail" type="checkbox" checked> Enhanced rootwad detail</label>
+      <button id="presentationPreset">Apply presentation preset</button>
+    </section>
+
+    <section>
+      <h3>VEGETATION</h3>
+      <label class="check"><input id="vegetationToggle" type="checkbox" checked> Show establishment vegetation</label>
+      <label>Vegetation character<select id="vegetationStyle"><option value="riparian">Riparian mixed</option><option value="grass">Grass / sedge</option><option value="shrub">Shrub dominant</option></select></label>
+      <label>Density<input id="vegetationDensity" type="range" min="0" max="100" value="45"></label>
+      <label>Height<input id="vegetationHeight" type="range" min="20" max="180" value="100"></label>
+      <p class="mini-note">Presentation-only vegetation is generated from the RED design surface for Early/Established views. It is illustrative, not a planting layout or growth prediction.</p>
+    </section>
+    <section>
+      <h3>WATER</h3>
+      <label class="check"><input id="waterToggle" type="checkbox"> Show water surface</label>
+      <label>Water level (m AHD)<input id="waterLevel" type="number" step="0.05" value="0"></label>
+      <label>Water opacity<input id="waterOpacity" type="range" min="5" max="80" value="38"></label>
+      <label>Water appearance<select id="waterStyle"><option value="clear">Clear</option><option value="river">River</option><option value="flood">Flood / turbid</option></select></label>
+      <label>Water extent inset<input id="waterInset" type="range" min="0" max="45" value="8"></label>
+    </section>
+    <section>
+      <h3>PHOTO ALIGNMENT</h3>
+      <button id="openPhoto">Open site photo</button>
+      <input id="photoInput" type="file" accept="image/*" hidden>
+      <label class="check"><input id="photoToggle" type="checkbox"> Show alignment photo</label>
+      <label>Photo opacity<input id="photoOpacity" type="range" min="5" max="95" value="45"></label>
+      <label>Photo scale<input id="photoScale" type="range" min="40" max="220" value="100"></label>
+      <label>Photo rotation<input id="photoRotate" type="range" min="-15" max="15" step="0.1" value="0"></label>
+      <label>Horizontal shift<input id="photoShiftX" type="range" min="-180" max="180" value="0"></label>
+      <label>Vertical shift<input id="photoShiftY" type="range" min="-180" max="180" value="0"></label>
+      <label class="check"><input id="photoCrosshair" type="checkbox" checked> Alignment crosshair</label>
+      <div class="button-grid"><button id="resetPhoto">Reset photo</button><button id="swapPhotoSide">Flip photo/model order</button></div>
+      <button id="savePhotoMatch">Save photo-matched viewpoint</button>
+      <div id="photoStatus" class="status">No reference photo loaded.</div>
+    </section>
+    <section>
+      <h3>CAMERA</h3>
+      <div class="button-grid"><button data-camera="aerial">Aerial</button><button data-camera="top">Top</button><button data-camera="along">Along reach</button><button data-camera="across">Across reach</button></div>
+      <label>Saved viewpoints<select id="savedViews"><option value="">Select a view</option></select></label>
+      <button id="saveView">Save current viewpoint</button>
+    </section>
+    <section>
+      <h3>OUTPUT</h3>
+      <label>Image size<select id="exportSize"><option value="1920x1080">1920 × 1080</option><option value="2560x1440">2560 × 1440</option><option value="3840x2160">3840 × 2160 (4K)</option><option value="4961x3508">A3 landscape ~300 dpi</option></select></label>
+      <button id="exportPng">Export high-resolution PNG</button>
+      <button id="downloadViews">Download viewpoints</button>
+    </section>
+    <p class="footnote"><strong>RED Visualisation Studio v6.1</strong><br>Files stay in this browser. This hosted viewer is presentation-only and does not alter RED engineering geometry.</p>
+  </aside>
+  <main id="viewport" aria-label="RED 3D viewport">
+    <div id="photo-stage" aria-hidden="true"><img id="photo-overlay" alt=""><div id="photo-crosshair"></div></div>
+    <canvas id="gl-canvas" tabindex="0"></canvas>
+    <section id="empty-state" class="panel empty-state public-welcome">
+      <div class="welcome-mark">RED</div>
+      <h1>Visualisation Studio</h1>
+      <p id="empty-message" class="welcome-lead">Interactive 3D review for River Earthworks Designer projects.</p>
+      <button id="openPackageHero" class="welcome-open">Open RED visualisation package</button>
+      <div class="drop-hint">or drag a <strong>.redviz.zip</strong> package onto this window</div>
+      <div class="privacy-card"><strong>Your project stays local.</strong><span>Packages are processed in your browser and are not uploaded by this viewer.</span></div>
+      <div class="welcome-capabilities"><span>3D terrain</span><span>Aerial imagery</span><span>Rock &amp; Large Wood</span><span>Water</span><span>Establishment views</span><span>High-res export</span></div>
+    </section>
+    <section id="scene-hud" class="panel scene-hud hidden"><strong id="scenario-name">Scenario</strong><span id="scene-summary"></span><span id="scene-crs"></span></section>
+    <section id="warning-panel" class="panel warning-panel hidden"><strong>Review notes</strong><div id="warning-list"></div></section>
+    <section id="legend" class="panel legend hidden"><strong id="legend-title">Design elements</strong><div id="legend-items"></div></section>
+    <section id="inspector" class="panel inspector hidden"><div class="inspector-title"><strong>Surface probe</strong><button id="inspector-close">×</button></div><dl id="inspector-values"></dl><button id="open-section" class="primary-action hidden">Open section in Design Studio</button></section>
+    <div id="interaction-help" class="interaction-help hidden">Left-drag orbit · right-drag pan · wheel zoom · click surface to inspect</div>
+    <div id="axis-gizmo" class="axis-gizmo hidden"><span class="axis-z">RL</span><span class="axis-y">N</span><span class="axis-x">E</span></div>
+  </main>
+</div>
+<script src="viewer_canvas2d.js"></script>
+<script src="viewer.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
