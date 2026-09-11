@@ -53,3 +53,10 @@
 - [ ] Terrain-clipped water responds to west/east/south/north crop controls
 - [ ] RED water footprint mode falls back safely when no footprint is exported
 - [ ] RED water footprint mode uses `water_extent` when present
+
+
+## v6.4 checks
+- [ ] Proposed opacity at 0% hides proposed terrain and structures
+- [ ] Existing surface is restored beneath the design footprint at 0%
+- [ ] Rock, piles and Large Wood fade with proposed opacity
+- [ ] Clear / River / Flood water presets are visibly different

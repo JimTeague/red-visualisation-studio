@@ -40,7 +40,8 @@
       <label class="check"><input id="layerGrid" type="checkbox"> Reference grid</label>
       <label class="check"><input id="layerImagery" type="checkbox" checked> Aerial texture</label>
       <label class="check"><input id="layerWire" type="checkbox"> Triangle wireframe</label>
-      <label>Proposed opacity<input id="designOpacity" type="range" min="5" max="100" value="100"></label>
+      <label>Proposed design opacity<input id="designOpacity" type="range" min="0" max="100" value="100"></label>
+      <p class="mini-note">Controls proposed terrain and proposed structures together. At 0%, the true existing surface is restored under the design footprint.</p>
       <label>Existing opacity<input id="existingOpacity" type="range" min="5" max="100" value="100"></label>
       <label>Aerial brightness<input id="imageryBrightness" type="range" min="60" max="140" value="100"></label>
       <label>Aerial saturation<input id="imagerySaturation" type="range" min="0" max="160" value="100"></label>

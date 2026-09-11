@@ -112,3 +112,9 @@ See `GITHUB_SETUP.md` for the complete setup sequence.
 - Retained support for a future RED-exported `revegetation_area` footprint.
 
 All masking, clasts, water and vegetation remain presentation-only.
+
+
+## v6.4 refinements
+- Proposed design opacity now applies to proposed terrain, piles, rock, Large Wood and illustrative vegetation.
+- 0% is a true zero. When the reveal-cut-footprint review mask is selected, releasing the slider at 0% rebuilds the scene without masking the underlying existing surface.
+- Water appearance presets now use distinct base colours and effective opacity: Clear, River, and Flood/turbid.

@@ -1,13 +1,10 @@
 {
   "name": "RED Visualisation Studio",
-  "version": "6.3.0",
+  "version": "6.4.0",
   "release_channel": "github-pages",
-  "source_base": "v6.2 GitHub refinement release",
   "notes": [
-    "Reveal proposed cut footprint review mode masks existing terrain only over the design footprint",
-    "Improved faceted boulder-style illustrative rock clasts with size and coverage controls",
-    "Terrain-clipped water now supports manual directional crop controls",
-    "Viewer can consume an exported RED water footprint when available",
-    "Explicit RED revegetation and water-footprint export contract groundwork"
+    "Proposed opacity controls terrain and structures",
+    "0% restores existing surface under cut footprint",
+    "Water appearance presets now alter colour and effective opacity"
   ]
 }

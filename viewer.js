@@ -874,7 +874,7 @@
       } else if (mesh.layerGroup === "rock" || /rock|scour|filter/i.test(mesh.id + " " + mesh.label)) {
         base = state.displayStyle === "natural" ? [0.42, 0.41, 0.37] : [0.53, 0.50, 0.44];
       } else if (mesh.role === "water") {
-        base = [0.20, 0.55, 0.72];
+        base = parseColour(mesh.baseColor, [0.20, 0.55, 0.72]);
       } else if (mesh.role === "vegetation") {
         base = [0.27, 0.48, 0.22];
       }
@@ -1358,6 +1358,10 @@
       return state.designOpacity;
     }
     let value = Number.isFinite(mesh.opacity) ? mesh.opacity : 1.0;
+    const proposedStructure = mesh.role === "pile" || mesh.layerGroup === "rock" || mesh.layerGroup === "large_wood" || mesh.role === "vegetation";
+    if (proposedStructure) {
+      value *= state.designOpacity;
+    }
     if (isExistingRole(mesh.role)) {
       value *= state.existingOpacity;
     }
@@ -1479,7 +1483,8 @@
       gl.bindBuffer(gl.ARRAY_BUFFER, line.positionBuffer);
       gl.enableVertexAttribArray(lineLocations.position);
       gl.vertexAttribPointer(lineLocations.position, 3, gl.FLOAT, false, 0, 0);
-      gl.uniform4f(lineLocations.color, line.color[0], line.color[1], line.color[2], 1.0);
+      const lineAlpha = line.category === "breaklines" ? 1.0 : state.designOpacity;
+      gl.uniform4f(lineLocations.color, line.color[0], line.color[1], line.color[2], lineAlpha);
       gl.drawArrays(gl.LINE_STRIP, 0, line.count);
     });
   }
@@ -1793,7 +1798,7 @@
 
   function setOpacity(role, value) {
     const key = String(role || "");
-    const opacity = clamp(Number(value), 0.05, 1.0);
+    const opacity = clamp(Number(value), 0.0, 1.0);
     if (key === "design") {
       state.designOpacity = opacity;
       requestRender();

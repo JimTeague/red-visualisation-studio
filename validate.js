@@ -11,4 +11,7 @@ for (const token of ['setVisibility("rock"','setVisibility("large_wood"','setVis
 for (const token of ['getLayerGroups','buildTextureCoordinates','u_textureBrightness','u_textureSaturation','u_textureContrast','u_materialKind','u_materialVariation','redHash','materialBase','materialNoise','setImageryAdjustments','setMaterialOptions','exportImage','EXT_texture_filter_anisotropic','mesh.role === "vegetation"','setRenderPriority','renderPriority','mesh.role === "design" && state.imageryVisible']) { if (!viewer.includes(token)) throw new Error(`Missing viewer contract ${token}`); }
 if (!fallback.includes('vegetation: true')) throw new Error('Canvas fallback missing vegetation visibility state');
 for (const token of ['drag-active','public-welcome','privacy-card']) { if (!html.includes(token) && !fs.readFileSync(path.join(root,'app.css'),'utf8').includes(token)) throw new Error(`Missing v6.3 public UI contract ${token}`); }
-console.log('RED Visualisation Studio v6.3 static contract: PASS');
+if (!html.includes('id="designOpacity" type="range" min="0"')) throw new Error('Design opacity does not permit true zero');
+if (!app.includes('waterOpacityForStyle')) throw new Error('Missing water appearance opacity presets');
+if (!viewer.includes('const proposedStructure =')) throw new Error('Proposed structures do not follow proposed opacity');
+console.log('RED Visualisation Studio v6.4 static contract: PASS');
