@@ -60,3 +60,5 @@
 - [ ] Existing surface is restored beneath the design footprint at 0%
 - [ ] Rock, piles and Large Wood fade with proposed opacity
 - [ ] Clear / River / Flood water presets are visibly different
+
+- [ ] Pile-field orange alignment/guide lines disappear when **Pile fields** is off.

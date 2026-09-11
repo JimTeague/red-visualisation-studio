@@ -276,6 +276,12 @@
 
     function layerGroupForRole(role) {
       const value = String(role || "");
+      if (value === "pile_field_alignments") {
+        return "piles";
+      }
+      if (value === "pile_scour" || value === "pile_scour_protection") {
+        return "rock";
+      }
       if (value === "rock_toe" || value === "rock_toe_filter" || value === "rock_structure" || value === "rock_structure_filter") {
         return "rock";
       }

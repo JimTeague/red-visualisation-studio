@@ -118,3 +118,10 @@ All masking, clasts, water and vegetation remain presentation-only.
 - Proposed design opacity now applies to proposed terrain, piles, rock, Large Wood and illustrative vegetation.
 - 0% is a true zero. When the reveal-cut-footprint review mask is selected, releasing the slider at 0% rebuilds the scene without masking the underlying existing surface.
 - Water appearance presets now use distinct base colours and effective opacity: Clear, River, and Flood/turbid.
+
+
+## v6.4.1 hotfix
+
+- Pile-field alignment/guide lines now inherit the **Pile fields** visibility control.
+- Pile scour/protection guide lines inherit the **Rock** visibility control.
+- Exported `layer_group` metadata is honoured for linework before role-based fallback.

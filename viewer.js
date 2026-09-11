@@ -563,6 +563,12 @@
 
   function layerGroupForRole(role) {
     const value = String(role || "");
+    if (value === "pile_field_alignments") {
+      return "piles";
+    }
+    if (value === "pile_scour" || value === "pile_scour_protection") {
+      return "rock";
+    }
     if (value === "rock_toe" || value === "rock_toe_filter" || value === "rock_structure" || value === "rock_structure_filter") {
       return "rock";
     }
@@ -1051,11 +1057,13 @@
       return null;
     }
     const role = String(raw.role || "breakline");
-    const structure = role === "pile_field_alignments" || role === "pile_scour" || role === "pile_scour_protection" || role === "structure_outline";
+    const lineGroup = String(raw.layer_group || layerGroupForRole(role));
+    const structure = Boolean(lineGroup) || role === "pile_field_alignments" || role === "pile_scour" || role === "pile_scour_protection" || role === "structure_outline";
     return {
       id: String(raw.id || "line"),
       label: String(raw.label || raw.id || "Line"),
       role: role,
+      layerGroup: lineGroup,
       category: structure ? "structures" : "breaklines",
       sourcePoints: sourcePoints,
       positions: new Float32Array(positions),
