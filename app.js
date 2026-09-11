@@ -27,7 +27,7 @@ function clipTriangleBelowWater(a,b,c,z){
   }
   return out;
 }
-function terrainWaterMesh(scene,z){
+function terrainWaterMesh(scene,z,crop){
   const meshes=scene.meshes||[];
   const source=meshes.find(m=>m.role==="existing_imagery_full"&&Array.isArray(m.positions)&&Array.isArray(m.indices))||
     meshes.find(m=>(m.role==="existing_context"||m.role==="existing")&&Array.isArray(m.positions)&&Array.isArray(m.indices))||
@@ -41,6 +41,7 @@ function terrainWaterMesh(scene,z){
     const a=[Number(pts[ia])||0,Number(pts[ia+1])||0,Number(pts[ia+2])||0];
     const b=[Number(pts[ib])||0,Number(pts[ib+1])||0,Number(pts[ib+2])||0];
     const c=[Number(pts[ic])||0,Number(pts[ic+1])||0,Number(pts[ic+2])||0];
+    const cx=(a[0]+b[0]+c[0])/3,cy=(a[1]+b[1]+c[1])/3;if(crop&&(cx<crop.x0||cx>crop.x1||cy<crop.y0||cy>crop.y1))continue;
     const poly=clipTriangleBelowWater(a,b,c,z);
     if(poly.length<3)continue;
     const base=positions.length/3;
@@ -49,11 +50,23 @@ function terrainWaterMesh(scene,z){
   }
   return {positions,indices,kept};
 }
+function waterCropBounds(scene){
+  const b=scene.bounds||{},min=b.minimum||[-10,-10,0],max=b.maximum||[10,10,1],dx=max[0]-min[0],dy=max[1]-min[1];
+  const wx=(Number($("waterXMin").value)||0)/100,ex=(Number($("waterXMax").value)||0)/100,sy=(Number($("waterYMin").value)||0)/100,ny=(Number($("waterYMax").value)||0)/100;
+  return {x0:min[0]+dx*wx,x1:max[0]-dx*ex,y0:min[1]+dy*sy,y1:max[1]-dy*ny};
+}
+function redWaterFootprint(scene,z,op){
+  const source=(scene.meshes||[]).find(m=>(m.role==="water_extent"||m.role==="water_area"||m.layer_group==="water_extent"||/water[ _-]?(extent|area|footprint)/i.test(String(m.id||"")+" "+String(m.label||"")))&&Array.isArray(m.positions)&&Array.isArray(m.indices));
+  if(!source)return null;const positions=source.positions.slice();for(let i=2;i<positions.length;i+=3)positions[i]=z;
+  return {id:"studio-water",label:"RED water footprint",role:"water",positions,indices:source.indices.slice(),base_color:waterColour(),opacity:op,visible:true,metadata:{presentation_only:true,water_level_ahd:(Number($("waterLevel").value)||0),extent:"red",source_id:source.id||""}};
+}
 function addWater(scene){
   scene.meshes=(scene.meshes||[]).filter(m=>m.id!=="studio-water");if(!state.waterVisible)return;
   const b=scene.bounds||{},min=b.minimum||[-10,-10,0],max=b.maximum||[10,10,1],origin=scene.origin||{z:0};
-  const ahd=Number($("waterLevel").value)||0,z=ahd-(Number(origin.z)||0),op=(Number($("waterOpacity").value)||38)/100;
-  if($("waterExtent").value==="terrain"){const clipped=terrainWaterMesh(scene,z);if(clipped.indices.length){scene.meshes.push({id:"studio-water",label:"Terrain-clipped water surface",role:"water",positions:clipped.positions,indices:clipped.indices,base_color:waterColour(),opacity:op,visible:true,metadata:{presentation_only:true,water_level_ahd:ahd,extent:"terrain",triangles:clipped.kept}});return;}}
+  const ahd=Number($("waterLevel").value)||0,z=ahd-(Number(origin.z)||0),op=(Number($("waterOpacity").value)||38)/100,extent=$("waterExtent").value,crop=waterCropBounds(scene),sourceStatus=$("waterSource");
+  if(extent==="red"){const red=redWaterFootprint(scene,z,op);if(red){scene.meshes.push(red);if(sourceStatus)sourceStatus.textContent="Water source: RED water footprint";return;}if(sourceStatus)sourceStatus.textContent="RED water footprint not present - using terrain clipping";}
+  if(extent==="terrain"||extent==="red"){const clipped=terrainWaterMesh(scene,z,crop);if(clipped.indices.length){scene.meshes.push({id:"studio-water",label:"Terrain-clipped water surface",role:"water",positions:clipped.positions,indices:clipped.indices,base_color:waterColour(),opacity:op,visible:true,metadata:{presentation_only:true,water_level_ahd:ahd,extent:"terrain",triangles:clipped.kept,crop}});if(sourceStatus&&extent!=="red")sourceStatus.textContent="Water source: terrain clipping";return;}}
+  if(sourceStatus)sourceStatus.textContent="Water source: simple plane";
   const inset=(Number($("waterInset").value)||0)/100,dx=(max[0]-min[0])*inset,dy=(max[1]-min[1])*inset,x0=min[0]+dx,x1=max[0]-dx,y0=min[1]+dy,y1=max[1]-dy;
   scene.meshes.push({id:"studio-water",label:"Water surface",role:"water",positions:[x0,y0,z,x1,y0,z,x1,y1,z,x0,y1,z],indices:[0,1,2,0,2,3],base_color:waterColour(),opacity:op,visible:true,metadata:{presentation_only:true,water_level_ahd:ahd,extent:"plane"}});
 }
@@ -81,18 +94,20 @@ function addStemGeometry(positions,indices,cx,cy,cz,radius,height){
   for(let i=0;i<sides;i++){const j=(i+1)%sides;indices.push(first+i,first+j,first+sides+j,first+i,first+sides+j,first+sides+i);}
 }
 
-function addOctahedron(positions,indices,cx,cy,cz,rx,ry,rz){
-  const b=positions.length/3;
-  positions.push(cx-rx,cy,cz,cx+rx,cy,cz,cx,cy-ry,cz,cx,cy+ry,cz,cx,cy,cz+rz,cx,cy,cz-rz*.45);
-  indices.push(b,b+2,b+4,b+2,b+1,b+4,b+1,b+3,b+4,b+3,b,b+4,b+2,b,b+5,b+1,b+2,b+5,b+3,b+1,b+5,b,b+3,b+5);
+function addBoulderGeometry(positions,indices,cx,cy,cz,rx,ry,rz,seed){
+  const b=positions.length/3,n=6,angle=seeded01(cx,cy,cz,seed)*Math.PI;
+  for(let ring=0;ring<2;ring++){const z=cz+(ring?rz*.72:-rz*.22);for(let i=0;i<n;i++){const ang=angle+i*Math.PI*2/n;const jitter=.76+seeded01(cx+i,cy+ring,cz,seed+i*7)*.42;positions.push(cx+Math.cos(ang)*rx*jitter,cy+Math.sin(ang)*ry*jitter,z+(seeded01(cx,cy,cz,seed+i+30)-.5)*rz*.18);}}
+  const top=positions.length/3;positions.push(cx,cy,cz+rz*(.88+seeded01(cx,cy,cz,seed+77)*.2));
+  const bottom=positions.length/3;positions.push(cx,cy,cz-rz*.28);
+  for(let i=0;i<n;i++){const j=(i+1)%n;indices.push(b+i,b+j,b+n+j,b+i,b+n+j,b+n+i);indices.push(b+n+i,b+n+j,top);indices.push(b+j,b+i,bottom);}
 }
 function addRockClasts(scene){
   scene.meshes=(scene.meshes||[]).filter(m=>m.id!=="studio-rock-clasts");
   if(!$("rockClasts").checked)return;
   const rocks=(scene.meshes||[]).filter(m=>(m.layer_group==="rock"||/rock|scour/i.test(String(m.role||"")+" "+String(m.id||"")))&&Array.isArray(m.positions)&&Array.isArray(m.indices));
-  const positions=[],indices=[];let made=0;const maxClasts=700;
-  for(const rock of rocks){const pts=rock.positions,idx=rock.indices;const step=Math.max(3,Math.floor(idx.length/Math.max(60,Math.min(240,idx.length/9))));for(let k=0;k+2<idx.length&&made<maxClasts;k+=Math.max(3,step-step%3)){const ia=idx[k]*3,ib=idx[k+1]*3,ic=idx[k+2]*3;if(ic+2>=pts.length)continue;const cx=(pts[ia]+pts[ib]+pts[ic])/3,cy=(pts[ia+1]+pts[ib+1]+pts[ic+1])/3,cz=(pts[ia+2]+pts[ib+2]+pts[ic+2])/3;const e=Math.hypot((pts[ib]-pts[ia])||0,(pts[ib+1]-pts[ia+1])||0,(pts[ib+2]-pts[ia+2])||0);const base=Math.max(.12,Math.min(.75,e*.28));const n=seeded01(cx,cy,cz,made+11);addOctahedron(positions,indices,cx,cy,cz+base*.18,base*(.8+n*.65),base*(.65+seeded01(cx,cy,cz,made+21)*.55),base*(.45+seeded01(cx,cy,cz,made+31)*.55));made++;}}
-  if(indices.length)scene.meshes.push({id:"studio-rock-clasts",label:"Illustrative rock clasts",role:"rock_presentation",layer_group:"rock",positions,indices,base_color:"#77736a",opacity:1,visible:true,metadata:{presentation_only:true,illustrative:true,count:made}});
+  const positions=[],indices=[];let made=0;const density=(Number($("rockClastDensity").value)||85)/100,sizeScale=(Number($("rockClastSize").value)||100)/100,maxClasts=Math.round(900*Math.max(.25,density));
+  for(const rock of rocks){const pts=rock.positions,idx=rock.indices;const target=Math.max(35,Math.min(340,Math.round((idx.length/9)*density)));const triStep=Math.max(3,Math.floor(idx.length/Math.max(1,target)/3)*3);for(let k=0;k+2<idx.length&&made<maxClasts;k+=triStep){const ia=idx[k]*3,ib=idx[k+1]*3,ic=idx[k+2]*3;if(ic+2>=pts.length)continue;const cx=(pts[ia]+pts[ib]+pts[ic])/3,cy=(pts[ia+1]+pts[ib+1]+pts[ic+1])/3,cz=(pts[ia+2]+pts[ib+2]+pts[ic+2])/3;const e1=Math.hypot((pts[ib]-pts[ia])||0,(pts[ib+1]-pts[ia+1])||0,(pts[ib+2]-pts[ia+2])||0),e2=Math.hypot((pts[ic]-pts[ia])||0,(pts[ic+1]-pts[ia+1])||0,(pts[ic+2]-pts[ia+2])||0);const base=Math.max(.11,Math.min(.9,(e1+e2)*.12))*sizeScale;const s1=.78+seeded01(cx,cy,cz,made+11)*.58,s2=.72+seeded01(cx,cy,cz,made+21)*.5,s3=.5+seeded01(cx,cy,cz,made+31)*.55;addBoulderGeometry(positions,indices,cx,cy,cz+base*.06,base*s1,base*s2,base*s3,made+17);made++;}}
+  if(indices.length)scene.meshes.push({id:"studio-rock-clasts",label:"Illustrative rock clasts",role:"rock_presentation",layer_group:"rock",positions,indices,base_color:"#77736a",opacity:1,visible:true,metadata:{presentation_only:true,illustrative:true,count:made,size_scale:sizeScale,coverage:density}});
 }
 
 function addRootwadDetail(scene){
@@ -161,7 +176,12 @@ function addVegetation(scene){
   }
   if(indices.length){scene.meshes.push({id:"studio-vegetation",label:early?"Early establishment vegetation":"Established vegetation",role:"vegetation",layer_group:"vegetation",positions,indices,base_color:early?"#66884c":"#416f3a",opacity:1,visible:true,metadata:{presentation_only:true,illustrative:true,count:made,condition,style}});}
 }
-function loadCurrentScene(preserveCamera){if(!state.baseScene)return;const cam=preserveCamera&&window.RED3D?RED3D.getCamera():null;const scene=clone(state.baseScene);if(state.baseScene.imagery&&state.baseScene.imagery.texture&&state.baseScene.imagery.texture.path&&state.baseScene.imagery.texture.path.startsWith("blob:")){scene.imagery.texture.path=state.baseScene.imagery.texture.path;}addWater(scene);addRootwadDetail(scene);addRockClasts(scene);addVegetation(scene);state.scene=scene;RED3D.loadScene(scene);applyControls();if(cam)RED3D.setCamera(cam);}
+function pointInTri2D(px,py,a,b,c){const v0x=c[0]-a[0],v0y=c[1]-a[1],v1x=b[0]-a[0],v1y=b[1]-a[1],v2x=px-a[0],v2y=py-a[1],dot00=v0x*v0x+v0y*v0y,dot01=v0x*v1x+v0y*v1y,dot02=v0x*v2x+v0y*v2y,dot11=v1x*v1x+v1y*v1y,dot12=v1x*v2x+v1y*v2y,den=dot00*dot11-dot01*dot01;if(Math.abs(den)<1e-12)return false;const u=(dot11*dot02-dot01*dot12)/den,v=(dot00*dot12-dot01*dot02)/den;return u>=-.001&&v>=-.001&&u+v<=1.001;}
+function maskExistingOverDesign(scene){
+  if($("existingReveal").value!=="mask"||$("condition").value==="existing")return;const design=(scene.meshes||[]).find(m=>m.role==="design"&&Array.isArray(m.positions)&&Array.isArray(m.indices));if(!design)return;const dp=design.positions,di=design.indices,tris=[];for(let k=0;k+2<di.length;k+=3){const ia=di[k]*3,ib=di[k+1]*3,ic=di[k+2]*3;if(ic+2>=dp.length)continue;const A=[dp[ia],dp[ia+1]],B=[dp[ib],dp[ib+1]],C=[dp[ic],dp[ic+1]];tris.push({A,B,C,minx:Math.min(A[0],B[0],C[0]),maxx:Math.max(A[0],B[0],C[0]),miny:Math.min(A[1],B[1],C[1]),maxy:Math.max(A[1],B[1],C[1])});}
+  if(!tris.length)return;(scene.meshes||[]).forEach(m=>{if(!(m.role==="existing_imagery_full"||m.role==="existing_context"||m.role==="existing")||!Array.isArray(m.positions)||!Array.isArray(m.indices))return;const pts=m.positions,out=[];for(let k=0;k+2<m.indices.length;k+=3){const i0=m.indices[k],i1=m.indices[k+1],i2=m.indices[k+2],a=i0*3,b=i1*3,c=i2*3;if(c+2>=pts.length)continue;const x=(pts[a]+pts[b]+pts[c])/3,y=(pts[a+1]+pts[b+1]+pts[c+1])/3;let inside=false;for(const t of tris){if(x<t.minx||x>t.maxx||y<t.miny||y>t.maxy)continue;if(pointInTri2D(x,y,t.A,t.B,t.C)){inside=true;break;}}if(!inside)out.push(i0,i1,i2);}m.indices=out;m.metadata=Object.assign({},m.metadata||{},{presentation_masked_over_design:true});});
+}
+function loadCurrentScene(preserveCamera){if(!state.baseScene)return;const cam=preserveCamera&&window.RED3D?RED3D.getCamera():null;const scene=clone(state.baseScene);if(state.baseScene.imagery&&state.baseScene.imagery.texture&&state.baseScene.imagery.texture.path&&state.baseScene.imagery.texture.path.startsWith("blob:")){scene.imagery.texture.path=state.baseScene.imagery.texture.path;}maskExistingOverDesign(scene);addWater(scene);addRootwadDetail(scene);addRockClasts(scene);addVegetation(scene);state.scene=scene;RED3D.loadScene(scene);applyControls();if(cam)RED3D.setCamera(cam);}
 function applyControls(){if(!window.RED3D)return;RED3D.setCondition($("condition").value);RED3D.setColorMode($("colorMode").value);RED3D.setLighting($("lighting").value);if(RED3D.setRenderPriority)RED3D.setRenderPriority($("renderPriority").value);RED3D.setVisibility("design",$("layerDesign").checked);RED3D.setVisibility("existing",$("layerExisting").checked);RED3D.setVisibility("piles",$("layerPiles").checked);RED3D.setVisibility("rock",$("layerRock").checked);RED3D.setVisibility("large_wood",$("layerWood").checked);RED3D.setVisibility("vegetation",$("vegetationToggle").checked);RED3D.setVisibility("breaklines",$("layerBreaklines").checked);RED3D.setVisibility("grid",$("layerGrid").checked);RED3D.setImageryVisible($("layerImagery").checked);RED3D.setWireframe($("layerWire").checked);RED3D.setOpacity("design",Number($("designOpacity").value)/100);RED3D.setOpacity("existing",Number($("existingOpacity").value)/100);if(RED3D.setImageryAdjustments)RED3D.setImageryAdjustments(Number($("imageryBrightness").value)/100,Number($("imagerySaturation").value)/100,Number($("imageryContrast").value)/100);if(RED3D.setMaterialOptions)RED3D.setMaterialOptions($("rockMaterial").value,$("timberMaterial").value,Number($("materialVariation").value)/100);}
 function populateViews(){const select=$("savedViews");select.innerHTML='<option value="">Select a view</option>';Object.keys(state.cameras||{}).forEach(name=>{const o=document.createElement("option");o.value=name;o.textContent=name;select.appendChild(o);});}
 async function openPackage(file){status("Opening package…");revoke();const entries=await unzip(file);const manifest=jsonEntry(entries,"manifest.json");if(!/^red-visualisation-package\/(1|2)$/.test(String(manifest.schema||"")))throw new Error("Unsupported RED package version.");const scene=jsonEntry(entries,"scene.json");const cameras=entries["camera_views.json"]?JSON.parse(utf8(entries["camera_views.json"])):{};const textured=makeTextureUrl(entries,scene);state.manifest=manifest;state.baseScene=scene;state.cameras=cameras||{};state.packageName=file.name;populateViews();loadCurrentScene(false);status(file.name+" · "+((scene.meshes||[]).length)+" meshes"+(textured?" · aerial texture loaded":" · vertex-colour imagery fallback"));}
@@ -170,13 +190,13 @@ function updatePhoto(){const active=Boolean(state.photoUrl&&$("photoToggle").che
 async function compositeExport(w,h){const sceneUrl=RED3D.exportImage?RED3D.exportImage(w,h):$("gl-canvas").toDataURL("image/png");if(!(state.photoUrl&&$("photoToggle").checked))return sceneUrl;const out=document.createElement("canvas");out.width=w;out.height=h;const ctx=out.getContext("2d");const photo=$("photo-overlay"),sceneImage=new Image();await new Promise((res,rej)=>{sceneImage.onload=res;sceneImage.onerror=rej;sceneImage.src=sceneUrl;});const scale=Number($("photoScale").value)/100;const photoRatio=photo.naturalWidth/photo.naturalHeight,outRatio=w/h;let dw,dh;if(photoRatio>outRatio){dh=h;dw=dh*photoRatio;}else{dw=w;dh=dw/photoRatio;}dw*=scale;dh*=scale;const sx=Number($("photoShiftX").value)*(w/Math.max($("viewport").clientWidth,1));const sy=Number($("photoShiftY").value)*(h/Math.max($("viewport").clientHeight,1));const rotation=Number($("photoRotate").value)*Math.PI/180;function drawPhoto(){ctx.save();ctx.globalAlpha=Number($("photoOpacity").value)/100;ctx.translate(w/2+sx,h/2+sy);ctx.rotate(rotation);ctx.drawImage(photo,-dw/2,-dh/2,dw,dh);ctx.restore();}if(state.photoFront){ctx.drawImage(sceneImage,0,0,w,h);drawPhoto();}else{drawPhoto();ctx.drawImage(sceneImage,0,0,w,h);}return out.toDataURL("image/png");}
 $("openPackage").onclick=()=>$("fileInput").click();
 $("fileInput").onchange=async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;try{await openPackage(file);}catch(err){console.error(err);status("Could not open package: "+err.message);alert("Could not open package: "+err.message);}finally{e.target.value="";}};
-["colorMode","lighting","renderPriority","layerDesign","layerExisting","layerPiles","layerRock","layerWood","layerBreaklines","layerGrid","layerImagery","layerWire","designOpacity","existingOpacity","imageryBrightness","imagerySaturation","imageryContrast","rockMaterial","timberMaterial","materialVariation"].forEach(id=>$(id).addEventListener("input",applyControls));$("condition").addEventListener("input",()=>loadCurrentScene(true));["vegetationToggle","vegetationStyle","vegetationDensity","vegetationHeight"].forEach(id=>$(id).addEventListener("input",()=>loadCurrentScene(true)));$("rootwadDetail").addEventListener("input",()=>loadCurrentScene(true));$("rockClasts").addEventListener("input",()=>loadCurrentScene(true));
+["colorMode","lighting","renderPriority","existingReveal","layerDesign","layerExisting","layerPiles","layerRock","layerWood","layerBreaklines","layerGrid","layerImagery","layerWire","designOpacity","existingOpacity","imageryBrightness","imagerySaturation","imageryContrast","rockMaterial","timberMaterial","materialVariation"].forEach(id=>$(id).addEventListener("input",applyControls));$("condition").addEventListener("input",()=>loadCurrentScene(true));$("existingReveal").addEventListener("change",()=>loadCurrentScene(true));["vegetationToggle","vegetationStyle","vegetationDensity","vegetationHeight"].forEach(id=>$(id).addEventListener("input",()=>loadCurrentScene(true)));$("rootwadDetail").addEventListener("input",()=>loadCurrentScene(true));$("rockClasts").addEventListener("input",()=>loadCurrentScene(true));["rockClastSize","rockClastDensity"].forEach(id=>$(id).addEventListener("input",()=>loadCurrentScene(true)));
 document.querySelectorAll("[data-camera]").forEach(btn=>btn.onclick=()=>RED3D.setCameraPreset(btn.dataset.camera));
 $("savedViews").onchange=e=>{const c=state.cameras[e.target.value];if(c)RED3D.setCamera(c);};
 $("saveView").onclick=()=>{if(!state.baseScene)return;const name=prompt("Viewpoint name:");if(!name)return;state.cameras[name]=RED3D.getCamera();populateViews();$("savedViews").value=name;};
 $("downloadViews").onclick=()=>{const payload={views:state.cameras,photo_matches:state.photoMatches};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob);state.urls.push(url);const a=document.createElement("a");a.href=url;a.download="RED_viewpoints.json";a.click();};
 $("waterToggle").onchange=e=>{state.waterVisible=e.target.checked;loadCurrentScene(true);};
-["waterLevel","waterStyle","waterExtent","waterInset"].forEach(id=>$(id).onchange=()=>{if(state.waterVisible)loadCurrentScene(true);});
+["waterLevel","waterStyle","waterExtent","waterInset","waterXMin","waterXMax","waterYMin","waterYMax"].forEach(id=>$(id).onchange=()=>{if(state.waterVisible)loadCurrentScene(true);});
 $("waterOpacity").oninput=()=>{if(state.waterVisible)loadCurrentScene(true);};
 $("openPhoto").onclick=()=>$("photoInput").click();
 $("photoInput").onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(state.photoUrl)URL.revokeObjectURL(state.photoUrl);state.photoUrl=URL.createObjectURL(file);state.urls.push(state.photoUrl);$("photo-overlay").src=state.photoUrl;$("photoToggle").checked=true;$("photoStatus").textContent=file.name+" · alignment reference only";updatePhoto();e.target.value="";};

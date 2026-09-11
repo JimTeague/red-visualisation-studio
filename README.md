@@ -1,4 +1,4 @@
-# RED Visualisation Studio v6.2 - GitHub Pages refinement release
+# RED Visualisation Studio v6.3 - GitHub Pages refinement release
 
 Static browser viewer for River Earthworks Designer (RED) `.redviz.zip` visualisation packages.
 
@@ -83,7 +83,7 @@ Enable GitHub Pages and choose **GitHub Actions** as the publishing source.
 
 See `DEPLOY_GITHUB_PAGES.md` for step-by-step instructions.
 
-## New in v6.2
+## New in v6.3
 
 - **Review priority** control with realistic depth, proposed-terrain priority and structures priority. The priority modes are explicit review aids that let cut surfaces, buried rock and other structures remain visible without changing RED geometry.
 - **High-resolution aerial texture on proposed terrain** in Design elements view, removing the mismatch where surrounding context was sharp but the design footprint fell back to coarse vertex imagery.
@@ -101,3 +101,14 @@ See `RED_EXPORT_CONTRACT_v6_2.md` for the proposed RED-side revegetation and roc
 - **Suggested future domain:** `visualise.alluvium.com.au`
 
 See `GITHUB_SETUP.md` for the complete setup sequence.
+
+
+## v6.3 refinement pass
+
+- Added **Reveal proposed cut footprint** to mask existing-terrain triangles only where they overlap the proposed design footprint. This makes cut designs visible without fading the entire existing surface.
+- Reworked illustrative rock clasts into more irregular faceted boulders and added clast size / coverage controls.
+- Added manual directional crop controls to terrain-clipped water.
+- Added support for a future RED-exported `water_extent` footprint.
+- Retained support for a future RED-exported `revegetation_area` footprint.
+
+All masking, clasts, water and vegetation remain presentation-only.

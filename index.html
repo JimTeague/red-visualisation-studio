@@ -26,7 +26,8 @@
       <label>Surface colouring<select id="colorMode"><option value="elements">Design elements</option><option value="elevation">Elevation</option><option value="cut_fill">Cut / fill</option><option value="slope">Slope</option></select></label>
       <label>Light<select id="lighting"><option value="overcast">Overcast</option><option value="morning">Morning</option><option value="midday">Midday</option><option value="evening">Evening</option></select></label>
       <label>Review priority<select id="renderPriority"><option value="realistic">Realistic depth</option><option value="design">Proposed terrain priority</option><option value="structures">Structures priority</option></select></label>
-      <p class="mini-note">Priority modes are review aids. They can draw selected elements through overlying surfaces without changing RED geometry.</p>
+      <label>Existing terrain over design<select id="existingReveal"><option value="realistic">Keep realistic overlap</option><option value="mask" selected>Reveal proposed cut footprint</option></select></label>
+      <p class="mini-note">Reveal proposed cut footprint hides only the existing-terrain triangles directly over the design footprint. It is a review aid and does not change RED surfaces.</p>
     </section>
     <section>
       <h3>LAYERS</h3>
@@ -52,6 +53,8 @@
       <label>Material variation<input id="materialVariation" type="range" min="0" max="100" value="45"></label>
       <label class="check"><input id="rootwadDetail" type="checkbox" checked> Enhanced rootwad detail</label>
       <label class="check"><input id="rockClasts" type="checkbox" checked> Illustrative rock clasts</label>
+      <label>Rock clast size<input id="rockClastSize" type="range" min="50" max="180" value="100"></label>
+      <label>Rock clast coverage<input id="rockClastDensity" type="range" min="20" max="160" value="85"></label>
       <button id="presentationPreset">Apply presentation preset</button>
     </section>
 
@@ -70,7 +73,14 @@
       <label>Water level (m AHD)<input id="waterLevel" type="number" step="0.05" value="0"></label>
       <label>Water opacity<input id="waterOpacity" type="range" min="5" max="80" value="38"></label>
       <label>Water appearance<select id="waterStyle"><option value="clear">Clear</option><option value="river">River</option><option value="flood">Flood / turbid</option></select></label>
-      <label>Water extent<select id="waterExtent"><option value="terrain" selected>Clip to terrain below water level</option><option value="plane">Simple plane</option></select></label>
+      <label>Water extent<select id="waterExtent"><option value="terrain" selected>Clip to terrain below water level</option><option value="red">RED water footprint (when exported)</option><option value="plane">Simple plane</option></select></label>
+      <div id="waterSource" class="status">Water source: terrain clipping</div>
+      <details class="compact-details"><summary>Manual water crop</summary>
+        <label>West trim<input id="waterXMin" type="range" min="0" max="45" value="0"></label>
+        <label>East trim<input id="waterXMax" type="range" min="0" max="45" value="0"></label>
+        <label>South trim<input id="waterYMin" type="range" min="0" max="45" value="0"></label>
+        <label>North trim<input id="waterYMax" type="range" min="0" max="45" value="0"></label>
+      </details>
       <label>Plane extent inset<input id="waterInset" type="range" min="0" max="45" value="8"></label>
     </section>
     <section>
@@ -100,7 +110,7 @@
       <button id="exportPng">Export high-resolution PNG</button>
       <button id="downloadViews">Download viewpoints</button>
     </section>
-    <p class="footnote"><strong>RED Visualisation Studio v6.2</strong><br>Files stay in this browser. This hosted viewer is presentation-only and does not alter RED engineering geometry.</p>
+    <p class="footnote"><strong>RED Visualisation Studio v6.3</strong><br>Files stay in this browser. This hosted viewer is presentation-only and does not alter RED engineering geometry.</p>
   </aside>
   <main id="viewport" aria-label="RED 3D viewport">
     <div id="photo-stage" aria-hidden="true"><img id="photo-overlay" alt=""><div id="photo-crosshair"></div></div>

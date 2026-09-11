@@ -1,13 +1,13 @@
 {
   "name": "RED Visualisation Studio",
-  "version": "6.2.0",
+  "version": "6.3.0",
   "release_channel": "github-pages",
-  "source_base": "v6.1 public GitHub release",
+  "source_base": "v6.2 GitHub refinement release",
   "notes": [
-    "Review-priority modes for realistic depth, proposed terrain priority and structures priority",
-    "High-resolution aerial texture now also drapes over proposed terrain in design-elements view",
-    "Terrain-clipped water extent replaces full-scene plane as the default",
-    "Presentation-only illustrative rock clasts",
-    "Viewer detects future RED revegetation-footprint meshes and uses them preferentially for establishment vegetation"
+    "Reveal proposed cut footprint review mode masks existing terrain only over the design footprint",
+    "Improved faceted boulder-style illustrative rock clasts with size and coverage controls",
+    "Terrain-clipped water now supports manual directional crop controls",
+    "Viewer can consume an exported RED water footprint when available",
+    "Explicit RED revegetation and water-footprint export contract groundwork"
   ]
 }

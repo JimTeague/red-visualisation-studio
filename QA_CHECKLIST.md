@@ -33,7 +33,7 @@
 - [ ] Files remain local to browser during normal use
 - [ ] Viewer remains usable in a normal external browser session
 
-## v6.2 refinement acceptance
+## v6.3 refinement acceptance
 - [ ] Engineering / Design elements view shows sharp aerial texture over proposed terrain when Aerial texture is enabled
 - [ ] Review priority = Realistic depth preserves normal occlusion
 - [ ] Review priority = Proposed terrain priority exposes cut design without changing geometry
@@ -43,3 +43,13 @@
 - [ ] Illustrative rock clasts can be toggled independently
 - [ ] UI reports design-surface fallback when no RED revegetation footprint exists
 - [ ] Future revegetation-area mesh is preferred when present
+
+
+## v6.3 targeted checks
+- [ ] Existing terrain over design = Reveal proposed cut footprint exposes cut designs without fading the full existing terrain
+- [ ] Switching to Existing condition restores the complete existing terrain
+- [ ] Rock clast size control changes illustrative clast scale
+- [ ] Rock clast coverage control changes illustrative clast density
+- [ ] Terrain-clipped water responds to west/east/south/north crop controls
+- [ ] RED water footprint mode falls back safely when no footprint is exported
+- [ ] RED water footprint mode uses `water_extent` when present
