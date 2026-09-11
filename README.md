@@ -120,8 +120,13 @@ All masking, clasts, water and vegetation remain presentation-only.
 - Water appearance presets now use distinct base colours and effective opacity: Clear, River, and Flood/turbid.
 
 
-## v6.4.1 hotfix
+## v6.4.2 hotfix
 
 - Pile-field alignment/guide lines now inherit the **Pile fields** visibility control.
 - Pile scour/protection guide lines inherit the **Rock** visibility control.
 - Exported `layer_group` metadata is honoured for linework before role-based fallback.
+
+
+## v6.4.2 hotfix
+
+- Pile-field alignment/guide lines are intentionally suppressed from the external visualisation. Actual pile geometry remains unchanged.

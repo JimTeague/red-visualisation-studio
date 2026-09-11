@@ -630,11 +630,13 @@
     }
 
     function createLine(raw) {
+    const rawRole = String(raw.role || "breakline");
+    if (rawRole === "pile_field_alignments") { return null; }
       const sourcePoints = Array.isArray(raw.points) ? raw.points : [];
       if (sourcePoints.length < 2) {
         return null;
       }
-      const role = String(raw.role || "breakline");
+      const role = rawRole;
       const lineGroup = String(raw.layer_group || layerGroupForRole(role));
       const structure = Boolean(lineGroup) || role === "pile_field_alignments" || role === "pile_scour" || role === "pile_scour_protection" || role === "structure_outline";
       const line = {

@@ -1,10 +1,11 @@
 {
   "name": "RED Visualisation Studio",
-  "version": "6.4.0",
+  "version": "6.4.2",
   "release_channel": "github-pages",
   "notes": [
     "Proposed opacity controls terrain and structures",
     "0% restores existing surface under cut footprint",
-    "Water appearance presets now alter colour and effective opacity"
+    "Water appearance presets now alter colour and effective opacity",
+    "Suppress pile-field alignment guide lines in external viewer"
   ]
 }
