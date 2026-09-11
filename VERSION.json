@@ -1,0 +1,12 @@
+{
+  "name": "RED Visualisation Studio",
+  "version": "6.1.0",
+  "release_channel": "github-pages",
+  "source_base": "v5 offline bundle",
+  "notes": [
+    "Client-facing landing screen and privacy messaging",
+    "Drag-and-drop RED package opening",
+    "GitHub Pages deployment and repository setup guide",
+    "External-sharing release packaging"
+  ]
+}
